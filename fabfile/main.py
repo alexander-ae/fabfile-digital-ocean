@@ -65,6 +65,9 @@ def new_user(admin_username, admin_password):
 
 def add_swap(memory='1G'):
     """ Crea, activa y optimiza la memoria swap """
+    if memory == '0':
+        return
+
     run('fallocate -l {} /swapfile'.format(memory))
     run('chmod 600 /swapfile')
     run('mkswap /swapfile')
@@ -84,9 +87,9 @@ def config_python():
     cd('')
     run('mkdir -p ~/{etc,opt,src,tmp,webapps}')
     cd('src')
-    run('wget https://bootstrap.pypa.io/ez_setup.py')
-    sudo('python ez_setup.py install')
-    sudo('easy_install pip')
+    run('wget https://bootstrap.pypa.io/get-pip.py')
+    sudo('rm -f /usr/lib/python2.7/dist-packages/six*')  # fix para remover six
+    sudo('python get-pip.py')
     sudo('pip install virtualenv virtualenvwrapper uwsgi')
 
 
@@ -135,18 +138,18 @@ def restart_supervisor():
 
 def config_server():
     """ Configura el servidor por primera vez """
-    # env.user = 'root'
-    # update()
-    # new_user(secrets['username'], secrets['username_pw'])
-    # install_packages()
-    # add_swap(secrets['swap_memory'])
+    env.user = 'root'
+    update()
+    new_user(secrets['username'], secrets['username_pw'])
+    install_packages()
+    add_swap(secrets['swap_memory'])
 
-    # env.user = 'devstaff'
-    # config_python()
-    # config_bashrc()
+    env.user = 'devstaff'
+    config_python()
+    config_bashrc()
 
-    # env.user = 'root'
-    # config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
-    # config_nginx()
+    env.user = 'root'
+    config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
+    config_nginx()
     env.user = 'root'
     config_supervisor()
