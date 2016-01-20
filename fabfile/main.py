@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from .secrets import load_secrets
-
 from fabric.api import run, env, cd, sudo, put
 from fabric.colors import red, yellow
 from fabric.contrib.files import append
+import requests
 
+from .secrets import load_secrets
 
 secrets = load_secrets()
 
@@ -134,6 +134,18 @@ def restart_supervisor():
     sudo('supervisorctl reread')
     sudo('supervisorctl reload')
     # sudo('supervisorctl restart {}'.format('APP_NAME'))
+
+
+def config_bitbucket():
+    env.user = 'devstaff'
+    # añadimos bitbucket a la lista de hosts conocidos
+    run('ssh-keyscan -H bitbucket.org >> /home/deploy/.ssh/known_hosts')
+    # enviamos la clave ssh pública
+    # url = "https://api.bitbucket.org/1.0/repositories/{repo_user}/{repo_slug}/deploy-keys".format(
+    #     )
+
+    # requests.post(url, auth={'username': 'bitbucket_user', 'password': 'bitbucket_password'},
+    #     data={'label': '', 'key': ''})
 
 
 def config_server():
