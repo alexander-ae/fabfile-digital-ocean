@@ -23,7 +23,8 @@ APT_GET_PACKAGES = [
     'liblcms1-dev',
     'libxslt-dev',
     'mercurial',
-    'libssl-dev'
+    'libssl-dev',
+    'libncurses5-dev'
 ]
 
 
@@ -126,7 +127,7 @@ def config_supervisor():
     sudo('pip install supervisor')
     put('scripts/supervisord.conf', '/etc/supervisord.conf')
     sudo('mkdir /etc/ini/')
-    put('scripts/web.ini', '/etc/ini/{}'.format(secrets["APP_NAME"]))
+    put('scripts/django_app.ini', '/etc/ini/{}.ini'.format(secrets["APP_NAME"]))
 
 
 def restart_supervisor():
