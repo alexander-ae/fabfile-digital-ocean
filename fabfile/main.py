@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from StringIO import StringIO
+
 from fabric.api import run, env, cd, sudo, put
 from fabric.colors import red, yellow
 from fabric.contrib.files import append
+from fabric.operations import get
 import requests
+from requests.auth import HTTPBasicAuth
 
 from .secrets import load_secrets
 
@@ -138,15 +142,32 @@ def restart_supervisor():
 
 
 def config_bitbucket():
+    """ Configuración de bitbucket """
+    notice("Configuración de bitbucket")
     env.user = 'devstaff'
-    # añadimos bitbucket a la lista de hosts conocidos
-    run('ssh-keyscan -H bitbucket.org >> /home/deploy/.ssh/known_hosts')
-    # enviamos la clave ssh pública
-    # url = "https://api.bitbucket.org/1.0/repositories/{repo_user}/{repo_slug}/deploy-keys".format(
-    #     )
 
-    # requests.post(url, auth={'username': 'bitbucket_user', 'password': 'bitbucket_password'},
-    #     data={'label': '', 'key': ''})
+    # añadimos bitbucket a la lista de hosts conocidos
+    run('touch ~/.ssh/known_hosts')
+    run('ssh-keyscan -H bitbucket.org >> ~/.ssh/known_hosts')
+
+    # leemos la clave ssh pública
+    fd = StringIO()
+    get('~/.ssh/id_rsa.pub', fd)
+    id_rsa_pub = fd.getvalue()
+
+    # enviamos la clave a bicbucket
+    url = "https://api.bitbucket.org/1.0/repositories/{repo_user}/{repo_slug}/deploy-keys".format(
+        repo_slug=secrets['REPO_SLUG'], repo_user=secrets['REPO_USER'])
+
+    requests.post(url, auth=HTTPBasicAuth(secrets['BITBUCKET_USER'], secrets['BITBUCKET_PASSWORD']),
+        data={'label': secrets['hosts'][0], 'key': id_rsa_pub})
+
+
+def config_ssh():
+    """ Creamos una nueva clave ssh """
+    notice("New ssh key")
+    env.user = 'devstaff'
+    run('ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q')
 
 
 def config_server():
@@ -166,3 +187,7 @@ def config_server():
     config_nginx()
     env.user = 'root'
     config_supervisor()
+    config_ssh()
+    config_bitbucket()
+
+    notice('Todo correcto !')
