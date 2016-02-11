@@ -89,17 +89,19 @@ def add_swap(memory='1G'):
 def config_python():
     """ Configura e instala los paquetes:
         pip, virtualenv, virtualenvwrapper, uwsgi, supervisor """
-    cd('')
+    env.user = 'devstaff'
     run('mkdir -p ~/{etc,opt,src,tmp,webapps}')
-    cd('src')
-    run('wget https://bootstrap.pypa.io/get-pip.py')
-    sudo('rm -f /usr/lib/python2.7/dist-packages/six*')  # fix para remover six
-    sudo('python get-pip.py')
-    sudo('pip install virtualenv virtualenvwrapper uwsgi')
+
+    with cd('src'):
+        run('wget https://bootstrap.pypa.io/get-pip.py')
+        sudo('rm -f /usr/lib/python2.7/dist-packages/six*')  # fix para remover six
+        sudo('python get-pip.py')
+        sudo('pip install virtualenv virtualenvwrapper uwsgi')
 
 
 def config_bashrc():
-    # bashrc
+    """ Configurando el archivo .bashrc """
+    notice("Configurando el archivo .bashrc")
     append('~/.bashrc', 'alias python=python2;')
     append('~/.bashrc', 'export EDITOR=nano;')
     append('~/.bashrc', 'export TEMP=$HOME/tmp;')
@@ -163,6 +165,13 @@ def config_bitbucket():
         data={'label': secrets['hosts'][0], 'key': id_rsa_pub})
 
 
+def config_repo():
+    """ Clonamos y configuramos el repositorio """
+    env.user = 'devstaff'
+    with cd('~/webapps'):
+        run('hg clone {} {}'.format(secrets['REPO_URL'], secrets['REPO_SLUG']))
+
+
 def config_ssh():
     """ Creamos una nueva clave ssh """
     notice("New ssh key")
@@ -172,22 +181,22 @@ def config_ssh():
 
 def config_server():
     """ Configura el servidor por primera vez """
-    env.user = 'root'
-    update()
-    new_user(secrets['username'], secrets['username_pw'])
-    install_packages()
-    add_swap(secrets['swap_memory'])
+    # env.user = 'root'
+    # update()
+    # new_user(secrets['username'], secrets['username_pw'])
+    # install_packages()
+    # add_swap(secrets['swap_memory'])
 
     env.user = 'devstaff'
-    config_python()
-    config_bashrc()
+    # config_python()
+    # config_bashrc()
 
-    env.user = 'root'
-    config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
-    config_nginx()
-    env.user = 'root'
-    config_supervisor()
-    config_ssh()
-    config_bitbucket()
+    # env.user = 'root'
+    # config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
+    # config_nginx()
 
+    # config_supervisor()
+    # config_ssh()
+    # config_bitbucket()
+    config_repo()
     notice('Todo correcto !')
