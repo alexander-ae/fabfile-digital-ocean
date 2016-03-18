@@ -4,8 +4,9 @@ from StringIO import StringIO
 
 from fabric.api import run, env, cd, sudo, put
 from fabric.colors import red, yellow
-from fabric.contrib.files import append
+from fabric.contrib.files import append, upload_template
 from fabric.operations import get
+from fabric.decorators import task
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -33,21 +34,25 @@ APT_GET_PACKAGES = [
 
 
 def notice(s):
+    """ Muestra un mensaje colorido en consola """
     print(red('### ') + yellow(s, bold=True))
 
 
+@task
 def update():
     """ Actualiza el servidor """
     run('sudo apt-get update && sudo apt-get upgrade -y')
 
 
+@task
 def install_packages():
     """ Instala la lista de paquetes """
     run("apt-get install -y " + " ".join(APT_GET_PACKAGES))
 
 
+@task
 def new_user(admin_username, admin_password):
-    """ Crea un nuevo usuario y le otorga permisos de adminsitración """
+    """ Crea un nuevo usuario y le otorga permisos de administración """
 
     # Create the admin group and add it to the sudoers file
     admin_group = 'admin'
@@ -68,6 +73,7 @@ def new_user(admin_username, admin_password):
         password=admin_password))
 
 
+@task
 def add_swap(memory='1G'):
     """ Crea, activa y optimiza la memoria swap """
     if memory == '0':
@@ -86,11 +92,12 @@ def add_swap(memory='1G'):
     append('/etc/sysctl.conf', 'vm.vfs_cache_pressure = 50')
 
 
+@task
 def config_python():
     """ Configura e instala los paquetes:
         pip, virtualenv, virtualenvwrapper, uwsgi, supervisor """
     env.user = 'devstaff'
-    run('mkdir -p ~/{etc,opt,src,tmp,webapps}')
+    run('mkdir -p ~/{src,tmp,webapps}')
 
     with cd('src'):
         run('wget https://bootstrap.pypa.io/get-pip.py')
@@ -99,9 +106,11 @@ def config_python():
         sudo('pip install virtualenv virtualenvwrapper uwsgi')
 
 
+@task
 def config_bashrc():
     """ Configurando el archivo .bashrc """
     notice("Configurando el archivo .bashrc")
+    env.user = 'devstaff'
     append('~/.bashrc', 'alias python=python2;')
     append('~/.bashrc', 'export EDITOR=nano;')
     append('~/.bashrc', 'export TEMP=$HOME/tmp;')
@@ -111,8 +120,10 @@ def config_bashrc():
     run('source ~/.bashrc')
 
 
+@task
 def config_postgresql(db_name, db_user, db_pw):
     """ Instala y configura postgresql """
+    env.user = 'root'
     sudo('apt-get install -y libpq-dev postgresql postgresql-contrib')
 
     run('sudo -u postgres psql -c "create user {} with password \'{}\'"'.format(
@@ -121,28 +132,38 @@ def config_postgresql(db_name, db_user, db_pw):
         db_user, db_name), pty=True)
 
 
+@task
 def config_nginx():
     """ Instala y configura nginx """
+    env.user = 'root'
     sudo('add-apt-repository -y ppa:nginx/stable')
     sudo('apt-get update')
     sudo('apt-get install -y nginx')
+    upload_template('scripts/nginx.conf', '/etc/nginx/nginx.conf', context={},
+        use_jinja=True, use_sudo=True)
 
 
+@task
 def config_supervisor():
-    notice('Config supervisor')
+    """ Instala y configura supervisord """
+    notice('Instala y configura supervisord')
+    env.user = 'root'
     sudo('pip install supervisor')
     put('scripts/supervisord.conf', '/etc/supervisord.conf')
     sudo('mkdir /etc/ini/')
     put('scripts/django_app.ini', '/etc/ini/{}.ini'.format(secrets["APP_NAME"]))
 
 
+@task
 def restart_supervisor():
-    notice('Restarting Supervisor')
+    """ Reinicia supervisord """
+    notice('Reinicia supervisord')
     sudo('supervisorctl reread')
     sudo('supervisorctl reload')
     # sudo('supervisorctl restart {}'.format('APP_NAME'))
 
 
+@task
 def config_bitbucket():
     """ Configuración de bitbucket """
     notice("Configuración de bitbucket")
@@ -165,38 +186,42 @@ def config_bitbucket():
         data={'label': secrets['hosts'][0], 'key': id_rsa_pub})
 
 
+@task
 def config_repo():
     """ Clonamos y configuramos el repositorio """
+    notice("Clonamos y configuramos el repositorio")
     env.user = 'devstaff'
     with cd('~/webapps'):
         run('hg clone {} {}'.format(secrets['REPO_URL'], secrets['REPO_SLUG']))
 
 
+@task
 def config_ssh():
     """ Creamos una nueva clave ssh """
-    notice("New ssh key")
+    notice("Creamos una nueva clave ssh")
     env.user = 'devstaff'
     run('ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q')
 
 
+@task
 def config_server():
     """ Configura el servidor por primera vez """
-    # env.user = 'root'
-    # update()
-    # new_user(secrets['username'], secrets['username_pw'])
-    # install_packages()
-    # add_swap(secrets['swap_memory'])
+    env.user = 'root'
+    update()
+    new_user(secrets['username'], secrets['username_pw'])
+    install_packages()
+    add_swap(secrets['swap_memory'])
 
     env.user = 'devstaff'
-    # config_python()
-    # config_bashrc()
+    config_python()
+    config_bashrc()
 
-    # env.user = 'root'
-    # config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
-    # config_nginx()
+    env.user = 'root'
+    config_postgresql(secrets['db_name'], secrets['db_user'], secrets['db_pw'])
+    config_nginx()
 
-    # config_supervisor()
-    # config_ssh()
+    config_supervisor()
+    config_ssh()
     # config_bitbucket()
-    config_repo()
+    # config_repo()
     notice('Todo correcto !')
