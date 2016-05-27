@@ -41,7 +41,7 @@ def notice(s):
 @task
 def update():
     """ Actualiza el servidor """
-    run('sudo apt-get update && sudo apt-get upgrade -y')
+    run('sudo apt-get update --fix-missing && sudo apt-get upgrade -y')
 
 
 @task
@@ -203,6 +203,13 @@ def config_ssh():
     run('ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q')
 
 
+def config_uwsgi():
+    """ Configuramos uwsgi """
+    env.user = 'devstaff'
+    upload_template('scripts/uwsgi.ini', '~/webapps/{}/uwsgi.ini'.format(
+                    secrets['REPO_SLUG']), context=secrets, use_jinja=True, use_sudo=True)
+
+
 @task
 def config_server():
     """ Configura el servidor por primera vez """
@@ -222,6 +229,7 @@ def config_server():
 
     config_supervisor()
     config_ssh()
-    # config_bitbucket()
-    # config_repo()
+    config_bitbucket()
+    config_repo()
+    config_uwsgi()
     notice('Todo correcto !')
