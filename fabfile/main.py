@@ -28,6 +28,7 @@ APT_GET_PACKAGES = [
     'liblcms1-dev',
     'libxslt-dev',
     'mercurial',
+    'git',
     'libssl-dev',
     'libncurses5-dev'
 ]
@@ -203,6 +204,7 @@ def config_ssh():
     run('ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q')
 
 
+@task
 def config_uwsgi():
     """ Configuramos uwsgi """
     env.user = 'devstaff'
