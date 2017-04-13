@@ -16,7 +16,6 @@ secrets = load_secrets()
 
 env.hosts = secrets["hosts"]
 env.user = 'root'
-env.password = secrets['username_pw']
 
 APT_GET_PACKAGES = [
     'build-essential',
@@ -60,20 +59,27 @@ def new_user(admin_username, admin_password):
     # Create the admin group and add it to the sudoers file
     admin_group = 'admin'
     run('getent group {group} || addgroup {group}'.format(group=admin_group))
-    run('echo "%{group} ALL=(ALL) ALL" >> /etc/sudoers'.format(
-        group=admin_group))
+    run('echo "%{group} ALL=(ALL) ALL" >> /etc/sudoers'.format(group=admin_group))
 
     # Create the new admin user (default group=username); add to admin group
     run('id -u {username} &>/dev/null || adduser {username} --disabled-password --gecos ""'.format(
         username=admin_username))
-    run('adduser {username} {group}'.format(
-        username=admin_username,
-        group=admin_group))
+    run('adduser {username} {group}'.format(username=admin_username, group=admin_group))
 
     # Set the password for the new admin user
-    run('echo "{username}:{password}" | chpasswd'.format(
-        username=admin_username,
+    run('echo "{username}:{password}" | chpasswd'.format(username=admin_username,
         password=admin_password))
+
+
+@task
+def new_user_copy_public_key(username):
+    notice("Copiando el public_key al nuevo usuario")
+    run('mkdir -p /home/{username}/.ssh && chmod 700 /home/{username}/.ssh'.format(username=username))
+    keyfile = '/tmp/{}.pub'.format(username)
+    put('~/.ssh/id_rsa.pub', keyfile)
+    run('cat {} >> /home/{}/.ssh/authorized_keys'.format(keyfile, username))
+    run('chmod 600 /home/{username}/.ssh/authorized_keys'.format(username=username))
+    run('chown -R {}:{} /home/{}/.ssh'.format(username, username, username))
 
 
 @task
@@ -82,6 +88,7 @@ def add_swap(memory='1G'):
     if memory == '0':
         return
 
+    run('swapoff -a')
     run('fallocate -l {} /swapfile'.format(memory))
     run('chmod 600 /swapfile')
     run('mkswap /swapfile')
@@ -100,6 +107,7 @@ def config_python():
     """ Configura e instala los paquetes:
         pip, virtualenv, virtualenvwrapper, uwsgi, supervisor """
     env.user = 'devstaff'
+    env.password = secrets['username_pw']
     run('mkdir -p ~/{src,tmp,webapps}')
 
     with cd('src'):
@@ -219,6 +227,7 @@ def config_server():
     """ Configura el servidor por primera vez """
     update()
     new_user(secrets['username'], secrets['username_pw'])
+    new_user_copy_public_key(secrets['username'])
     install_packages()
     add_swap(secrets['swap_memory'])
 
