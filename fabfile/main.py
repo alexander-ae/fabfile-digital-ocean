@@ -15,6 +15,8 @@ from .secrets import load_secrets
 secrets = load_secrets()
 
 env.hosts = secrets["hosts"]
+env.user = 'root'
+env.password = secrets['username_pw']
 
 APT_GET_PACKAGES = [
     'build-essential',
@@ -23,9 +25,9 @@ APT_GET_PACKAGES = [
     'libjpeg-dev',
     'libfreetype6',
     'libfreetype6-dev',
-    'libtiff4-dev',
+    'libtiff5-dev',
     'libwebp-dev',
-    'liblcms1-dev',
+    'liblcms2-dev',
     'libxslt-dev',
     'mercurial',
     'git',
@@ -57,12 +59,12 @@ def new_user(admin_username, admin_password):
 
     # Create the admin group and add it to the sudoers file
     admin_group = 'admin'
-    run('addgroup {group}'.format(group=admin_group))
+    run('getent group {group} || addgroup {group}'.format(group=admin_group))
     run('echo "%{group} ALL=(ALL) ALL" >> /etc/sudoers'.format(
         group=admin_group))
 
     # Create the new admin user (default group=username); add to admin group
-    run('adduser {username} --disabled-password --gecos ""'.format(
+    run('id -u {username} &>/dev/null || adduser {username} --disabled-password --gecos ""'.format(
         username=admin_username))
     run('adduser {username} {group}'.format(
         username=admin_username,
@@ -152,7 +154,7 @@ def config_supervisor():
     sudo('pip install supervisor')
     put('scripts/supervisord.conf', '/etc/supervisord.conf')
     sudo('mkdir /etc/ini/')
-    put('scripts/django_app.ini', '/etc/ini/{}.ini'.format(secrets["APP_NAME"]))
+    put('scripts/django_app.ini', '/etc/ini/{}.ini'.format(secrets["REPO_SLUG"]))
 
 
 @task
@@ -161,7 +163,7 @@ def restart_supervisor():
     notice('Reinicia supervisord')
     sudo('supervisorctl reread')
     sudo('supervisorctl reload')
-    # sudo('supervisorctl restart {}'.format('APP_NAME'))
+    # sudo('supervisorctl restart {}'.format('REPO_SLUG'))
 
 
 @task
@@ -215,7 +217,6 @@ def config_uwsgi():
 @task
 def config_server():
     """ Configura el servidor por primera vez """
-    env.user = 'root'
     update()
     new_user(secrets['username'], secrets['username_pw'])
     install_packages()
