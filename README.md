@@ -11,3 +11,10 @@ Cree un archivo llamado **fabfile/secrets.json** en base a la plantilla **fabfil
 ```sh
 fab config_server
 ```
+
+## Otras tareas
+
+* **copy_database**: importa la base de datos desde el directorio *data/dump.sql*
+    ```sh
+    fab copy_database
+    ```
