@@ -148,6 +148,19 @@ def config_postgresql(db_name, db_user, db_pw):
 
 
 @task
+def copy_database():
+    """ Importa la base de datos en el servidor """
+    notice('Importando la base de datos en el servidor')
+    env.user = 'devstaff'
+    temp_file = '/tmp/dump.sql'
+    append('~/.pgpass', 'localhost:5432:{}:{}:{}'.format(
+        secrets['db_name'], secrets['db_user'], secrets['db_pw']))
+    run('chmod 600 ~/.pgpass')
+    put('data/dump.sql', temp_file)
+    run('psql -U {} {} < {}'.format(secrets['db_user'], secrets['db_name'], temp_file))
+
+
+@task
 def config_nginx():
     """ Instala y configura nginx """
     env.user = 'root'
