@@ -142,6 +142,10 @@ def config_postgresql(db_name, db_user, db_pw):
     run('sudo -u postgres createdb --owner={} {}'.format(
         db_user, db_name), pty=True)
 
+    postgres_version = run('ls /etc/postgresql')
+    put('scripts/pg_hba.conf', '/etc/postgresql/{}/main/pg_hba.conf'.format(postgres_version))
+    run('service postgresql restart')
+
 
 @task
 def config_nginx():
